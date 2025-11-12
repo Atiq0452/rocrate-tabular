@@ -155,23 +155,39 @@ class EntityRecord:
 
     # TODO: we should only call this if there are more than one
     def set_property_numbered(self, prop, value):
+        """Store a scalar property. If multiple values arrive, we number them
+        (prop_1, prop_2, …). When we would exceed MAX_NUMBERED_COLS, we
+        spill all values into a single list column named f"{prop}__list"
+        and stop numbering further.
+        """
         if prop in self.data:
-            # Find the first available integer to append to property_name
+        # Find next available numbered slot
             i = 1
             while f"{prop}_{i}" in self.data:
                 i += 1
-            prop = f"{prop}_{i}"
-            if i > MAX_NUMBERED_COLS:
-                raise ROCrateTabulatorException(f"Too many columns for {prop}")
-        self.data[prop] = value
 
-    def set_property_relational(self, prop, value, target_id):
-        """Add junctions between an entity and related entities"""
-        # FIXME what happens to value here?
-        if prop not in self.junctions:
-            self.junctions[prop] = [target_id]
-        else:
-            self.junctions[prop].append(target_id)
+        # If next slot would exceed the cap, aggregate instead of failing
+            if i > MAX_NUMBERED_COLS:
+                agg_key = f"{prop}__list"
+
+            # Build the full list from existing base + numbered values
+                existing = []
+                if prop in self.data:
+                    existing.append(self.data[prop])
+                j = 1
+                while f"{prop}_{j}" in self.data:
+                    existing.append(self.data[f"{prop}_{j}"])
+                    j += 1
+                existing.append(value)
+
+            # Store as a Python list (sqlite-utils will persist as JSON)
+                self.data[agg_key] = existing
+                return
+
+            # Still under the cap: add as a numbered column
+            prop = f"{prop}_{i}"
+        
+        self.data[prop] = value
 
 
 class Config(collections.UserDict):
