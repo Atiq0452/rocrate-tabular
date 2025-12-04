@@ -13,6 +13,8 @@ import re
 import requests
 import sys
 from dataclasses import dataclass, field
+from itertools import groupby
+from operator import itemgetter
 
 # FIXME: add real logging
 
@@ -505,22 +507,67 @@ tb.use_tables(["CreativeWork", "Person"])
             "property_label": prop,
             "value": value,
         }
+        
+    def fetch_properties_for_ids(self, entity_ids):
+        if not entity_ids:
+            return []
+
+        placeholders = ",".join(["?"] * len(entity_ids))
+        query = f"""
+            SELECT source_id, property_label, value, target_id
+            FROM property
+            WHERE source_id IN ({placeholders})
+            ORDER BY source_id
+            """
+        return list(self.db.query(query, entity_ids))
+
+    def group_properties_by_entity(self, rows):
+        rows.sort(key=itemgetter("source_id"))
+        grouped = {}
+        for entity_id, group in groupby(rows, key=itemgetter("source_id")):
+            grouped[entity_id] = list(group)
+        return grouped
+
+
 
     def entity_table(self, table, text_prop=None):
-        """Build a db table for one type of entity. Returns a set() of all
-        the properties found during the build. text_prop is a property to
-        be loaded and indexed as text. If it's none, the tabulator object's
-        text_prop will be used."""
+        """
+        Build a db table for one type of entity (batched version — fast).
+        """
+
+        # Step 1: Junction detection (unchanged)
         self.entity_table_plan(table)
-        entities = []
-        allprops = set()
+
         if text_prop is not None:
             self.text_prop = text_prop
-        for entity_id in tqdm(list(self.fetch_ids(table))):
-            entity = EntityRecord(tabulator=self, table=table, entity_id=entity_id)
-            props = entity.build(self.fetch_properties(entity_id))
+
+        # Step 2: Get all entity IDs once
+        entity_ids = list(self.fetch_ids(table))
+
+        # Step 3: Fetch ALL properties for all entities in ONE query
+        all_rows = self.fetch_properties_for_ids(entity_ids)
+
+        # Step 4: Group rows by entity
+        grouped = self.group_properties_by_entity(all_rows)
+
+        entities = []
+        allprops = set()
+
+        # Step 5: Build each entity
+        for entity_id in tqdm(entity_ids):
+            entity = EntityRecord(
+                tabulator=self,
+                table=table,
+                entity_id=entity_id
+            )
+
+            rows_for_entity = grouped.get(entity_id, [])
+            props = entity.build(rows_for_entity)
+
             allprops.update(props)
             entities.append(entity.data)
+
+            # Step 6: Handle junction tables (unchanged)
             for prop, target_ids in entity.junctions.items():
                 jtable = f"{table}_{prop}"
                 seq = 0
@@ -536,9 +583,20 @@ tb.use_tables(["CreativeWork", "Person"])
                         alter=True,
                     )
                     seq += 1
-        self.db[table].insert_all(entities, pk="entity_id", replace=True, alter=True)
+
+        # Step 7: Write main entity table
+        self.db[table].insert_all(
+            entities,
+            pk="entity_id",
+            replace=True,
+            alter=True
+        )
+
+        # Step 8: Save props
         self.config["tables"][table]["all_props"] = list(allprops)
+
         return list(allprops)
+
 
     def entity_table_plan(self, table):
         """Check entity relations to see if any need to be done as a junction
