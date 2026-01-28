@@ -373,7 +373,7 @@ dev = [
 requires-dist = [
     { name = "requests", specifier = ">=2.32.3" },
     { name = "sqlite-utils", specifier = ">=3.37" },
-    { name = "tinycrate", specifier = "==0.1.2" },
+    { name = "tinycrate", git = "https://github.com/Sydney-Informatics-Hub/tinycrate.git?rev=rc-0.1.5" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
 
@@ -457,15 +457,11 @@ wheels = [
 
 [[package]]
 name = "tinycrate"
-version = "0.1.2"
-source = { registry = "https://pypi.org/simple" }
+version = "0.1.5"
+source = { git = "https://github.com/Sydney-Informatics-Hub/tinycrate.git?rev=rc-0.1.5#5e9251649671c606b79b7bba0033496c147d752a" }
 dependencies = [
     { name = "requests" },
     { name = "types-requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/1f/40/ede4d6566efc7fbc6b87d3d8a43fd8f4cfe50befeb9053425e19b49ff4bc/tinycrate-0.1.2.tar.gz", hash = "sha256:7ed3c720643f1bd967c6ded8658496ba8319669215a10a7eb1515a596320474c", size = 60307, upload-time = "2025-06-06T07:32:25.73Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/7b/d6ba447136d8c9e0a43c2e95e903245c61cb427748cc897f8c304c68711a/tinycrate-0.1.2-py3-none-any.whl", hash = "sha256:28c74950c9759c99d49aa3e8f3d6e12ca347c7b313cb234ae3c988e04857ab0c", size = 6998, upload-time = "2025-06-06T07:32:24.72Z" },
 ]
 
 [[package]]

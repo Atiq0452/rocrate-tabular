@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "requests>=2.32.3",
     "sqlite-utils>=3.37",
-    "tinycrate==0.1.2",
+    "tinycrate @ git+https://github.com/Sydney-Informatics-Hub/tinycrate.git@rc-0.1.5",
     "tqdm>=4.67.1",
 ]
 
@@ -17,6 +17,9 @@ tabulator = "rocrate_tabular.tabulator:cli"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.uv]
 dev-dependencies = [
